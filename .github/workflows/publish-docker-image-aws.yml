@@ -15,7 +15,7 @@ on:
         required: true
         default: "v3.8.0"
 
-# env:
+env:
 #   GO_VERSION: "1.21"
 AWS_REGION: ap-southeast-1
 ECR_REGISTRY: 024905375334.dkr.ecr.ap-southeast-1.amazonaws.com
