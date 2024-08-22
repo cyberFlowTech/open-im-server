@@ -106,7 +106,7 @@ jobs:
         uses: docker/metadata-action@v5.5.1
         with:
           images: |
-            ${{ ECR_REGISTRY }}/openim
+            ${{ env.ECR_REGISTRY }}/openim
             # openim/openim-server
             
           # generate Docker tags based on the following events/attributes
