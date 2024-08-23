@@ -1,4 +1,4 @@
-name: Publish Docker image to aws registries
+name: Build OpenIM Servers and Push Docker image to aws registries
 
 on:
   push:
@@ -10,6 +10,26 @@ on:
 
   workflow_dispatch:
     inputs:
+      servicename:
+        description: '服务名'
+        required: true
+        # 开发者维护 具体服务名
+        default: 'openim-api'
+        type: choice
+        options:
+          - openim-api
+          - openim-push
+          - openim-msgtransfer
+          - openim-msggateway
+          - openim-rpc-auth
+          - openim-rpc-conversation
+          - openim-rpc-friend
+          - openim-rpc-group
+          - openim-rpc-msg
+          - openim-rpc-third
+          - openim-rpc-user
+          - openim-crontask
+          - openim-cmdutils
       tag:
         description: "Tag version to be used for Docker image"
         required: true
@@ -23,104 +43,13 @@ env:
   #   GO_VERSION: "1.21"
   AWS_REGION: ap-southeast-1
   ECR_REGISTRY: 024905375334.dkr.ecr.ap-southeast-1.amazonaws.com
-  
+  SERVICE_NAME: ${{ github.event.inputs.servicename }}
+
 
 jobs:
   publish-docker-images:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          path: main-repo
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./main-repo
-          load: true
-          tags: "openim/openim-server:local"
-
-      - name: Checkout compose repository
-        uses: actions/checkout@v4
-        with:
-          repository: "openimsdk/openim-docker"
-          path: "compose-repo"
-
-      - name: Get Internal IP Address
-        id: get-ip
-        run: |
-          IP=$(hostname -I | awk '{print $1}')
-          echo "The IP Address is: $IP"
-          echo "::set-output name=ip::$IP"
-
-      - name: Update .env to use the local image
-        run: |
-          sed -i 's|OPENIM_SERVER_IMAGE=.*|OPENIM_SERVER_IMAGE=openim/openim-server:local|' ${{ github.workspace }}/compose-repo/.env
-          sed -i 's|MINIO_EXTERNAL_ADDRESS=.*|MINIO_EXTERNAL_ADDRESS=http://${{ steps.get-ip.outputs.ip }}:10005|' ${{ github.workspace }}/compose-repo/.env
-
-      - name: Start services using Docker Compose
-        run: |
-          cd ${{ github.workspace }}/compose-repo
-          docker compose up -d
-          sleep 60
-
-      - name: Check openim-server health
-        run: |
-          timeout=300
-          interval=30
-          elapsed=0
-          while [[ $elapsed -le $timeout ]]; do
-            if ! docker exec openim-server mage check; then
-              echo "openim-server is not ready, waiting..."
-              sleep $interval
-              elapsed=$(($elapsed + $interval))
-            else
-              echo "Health check successful"
-              exit 0
-            fi
-          done
-          echo "Health check failed after 5 minutes"
-          exit 1
-
-      - name: Check openim-chat health
-        if: success()
-        run: |
-          if ! docker exec openim-chat mage check; then
-              echo "openim-chat check failed"
-              exit 1
-            else
-              echo "Health check successful"
-              exit 0
-            fi
-
-
-      - name: Extract metadata for Docker #  (tags, labels) 
-        if: success()
-        id: meta
-        uses: docker/metadata-action@v5.5.1
-        with:
-          images: |
-            ${{ env.ECR_REGISTRY }}/openim
-            # openim/openim-server
-            
-          # generate Docker tags based on the following events/attributes
-          tags: |
-            type=ref,event=tag
-            type=schedule
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern=v{{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
-      
       #aws ecr
       - name: Configure AWS credentials # 配置aws
         uses: aws-actions/configure-aws-credentials@v1
@@ -133,11 +62,39 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build and push Docker images
-        uses: docker/build-push-action@v5
-        with:
-          context: ./main-repo
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Checkout # 检出分支
+        uses: actions/checkout@v3
+
+      - name: Extract origin branch name # 发布到dev/test环境就拿分支;发布到prod环境就拿Tag
+        id: extract_origin_branch
+        shell: bash
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/tags/})"
+
+      - name: Extract branch name # 处理斜杠
+        id: extract_branch
+        shell: bash
+        run: |
+          echo "##[set-output name=branch;]$(echo ${{ steps.extract_origin_branch.outputs.branch }} | sed 's/\//_/g')" 
+
+      - name: Extract github sha # 拿github sha 并截取10位
+        id: extract_github_sha
+        shell: bash
+        run: |
+          echo "##[set-output name=githubsha;]$(echo ${GITHUB_SHA:0:10})"
+
+      - name: Extract image tag # 提取镜像tag 命名规则 [分支名/Tag]_[GithubCommitSHA]
+        id: extract_image_tag
+        shell: bash
+        run: |
+          echo "##[set-output name=imagetag;]$(echo ${{ env.AWS_REGION }}-${{ steps.extract_branch.outputs.branch }}-${{ steps.extract_github_sha.outputs.githubsha }})"
+
+      - name: Build, tag, and push image to Amazon ECR # 构建镜像,推送镜像到ecr仓库
+        id: build-image
+        run: |
+          docker build -t $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }} -f build/images/${{ env.AWS_REGION }}/Dockerfile .
+          docker push $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }}
+
+
+
+      
