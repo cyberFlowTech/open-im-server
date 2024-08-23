@@ -111,7 +111,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./main-repo
-          file: build/images/${{ env.SERVICE_NAME }}/Dockerfile #dockfile for server
+          file: ./main-repo/build/images/${{ env.SERVICE_NAME }}/Dockerfile #dockfile for server
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.extract_image_tag.outputs.imagetag }}
