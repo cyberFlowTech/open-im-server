@@ -87,13 +87,38 @@ jobs:
         id: extract_image_tag
         shell: bash
         run: |
-          echo "##[set-output name=imagetag;]$(echo ${{ env.SERVICE_NAME }}-${{ steps.extract_branch.outputs.branch }}-${{ steps.extract_github_sha.outputs.githubsha }})"
+          echo "##[set-output name=imagetag;]$(echo ${{ env.SERVICE_NAME }}-${{ github.event.inputs.tag }})" 
+        
+        # hash steps.extract_branch.outputs.branch-${{ steps.extract_github_sha.outputs.githubsha }}
 
-      - name: Build, tag, and push image to Amazon ECR # 构建镜像,推送镜像到ecr仓库
-        id: build-image
-        run: |
-          docker build -t $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }} -f build/images/${{ env.SERVICE_NAME }}/Dockerfile .
-          docker push $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for Docker #  (tags, labels) 
+        id: meta
+        uses: docker/metadata-action@v5.5.1
+        with:
+          images: |
+            $ECR_REGISTRY/openim
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5
+        with:
+          context: ./main-repo
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.extract_image_tag.outputs.imagetag }}
+          # labels: ${{ steps.meta.outputs.labels }}
+  
+      # - name: Build, tag, and push image to Amazon ECR # 构建镜像,推送镜像到ecr仓库
+        # id: build-image
+        # uses: docker/build-push-action@v5
+        #run: |
+        #  docker build -t $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }} -f build/images/${{ env.SERVICE_NAME }}/Dockerfile .
+        #  docker push $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }}
 
 
 
