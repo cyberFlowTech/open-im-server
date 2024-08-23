@@ -63,7 +63,10 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Checkout # 检出分支
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          path: main-repo
+
 
       - name: Extract origin branch name # 发布到dev/test环境就拿分支;发布到prod环境就拿Tag
         id: extract_origin_branch
