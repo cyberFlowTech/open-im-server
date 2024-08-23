@@ -23,7 +23,8 @@ ARG GO111MODULE=on
 WORKDIR /openim/openim-server
 
 ENV GO111MODULE=$GO111MODULE
-ENV GOPROXY=$GOPROXY
+ENV GOPROXY=https://goproxy.io,direct 
+#$GOPROXY
 
 COPY go.mod go.sum ./
 RUN go mod download
