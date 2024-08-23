@@ -87,12 +87,12 @@ jobs:
         id: extract_image_tag
         shell: bash
         run: |
-          echo "##[set-output name=imagetag;]$(echo ${{ env.AWS_REGION }}-${{ steps.extract_branch.outputs.branch }}-${{ steps.extract_github_sha.outputs.githubsha }})"
+          echo "##[set-output name=imagetag;]$(echo ${{ env.SERVICE_NAME }}-${{ steps.extract_branch.outputs.branch }}-${{ steps.extract_github_sha.outputs.githubsha }})"
 
       - name: Build, tag, and push image to Amazon ECR # 构建镜像,推送镜像到ecr仓库
         id: build-image
         run: |
-          docker build -t $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }} -f build/images/${{ env.AWS_REGION }}/Dockerfile .
+          docker build -t $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }} -f build/images/${{ env.SERVICE_NAME }}/Dockerfile .
           docker push $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }}
 
 
