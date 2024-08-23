@@ -111,10 +111,11 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./main-repo
+          file: build/images/${{ env.SERVICE_NAME }}/Dockerfile #dockfile for server
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.extract_image_tag.outputs.imagetag }}
-          # labels: ${{ steps.meta.outputs.labels }}
+          labels: ${{ env.SERVICE_NAME }}
   
       # - name: Build, tag, and push image to Amazon ECR # 构建镜像,推送镜像到ecr仓库
         # id: build-image
