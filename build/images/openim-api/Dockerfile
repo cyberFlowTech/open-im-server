@@ -16,7 +16,9 @@
 
 # Set go mod installation source and proxy
 
-FROM golang:1.20 AS builder
+# FROM golang:1.20 AS builder
+FROM golang:1.21-alpine as builder
+
 
 ARG GO111MODULE=on
 
