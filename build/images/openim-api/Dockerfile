@@ -33,9 +33,11 @@ RUN go mod download
 
 COPY . .
 
-RUN make build BINS=openim-api
+# RUN make build BINS=openim-api
+RUN go mod tidy && go build -o openim-api ./cmd/openim-api/main.go
 
-RUN cp /openim/openim-server/_output/bin/platforms/$(go env GOOS)/$(go env GOARCH)/openim-api /usr/bin/openim-api
+# RUN cp /openim/openim-server/_output/bin/platforms/$(go env GOOS)/$(go env GOARCH)/openim-api /usr/bin/openim-api
+RUN cp openim-api /usr/bin/openim-api
 
 # FROM ghcr.io/openim-sigs/openim-bash-image:latest
 FROM ghcr.io/openim-sigs/openim-bash-image:latest
