@@ -130,7 +130,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           # tags: openim:${{ steps.extract_image_tag.outputs.imagetag }}
-          tags: $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }}
+          tags: ${{ env.ECR_REGISTRY }}/openim:${{ steps.extract_image_tag.outputs.imagetag }}
           labels: ${{ env.SERVICE_NAME }}
         env:
           GOPROXY: https://goproxy.io,direct
