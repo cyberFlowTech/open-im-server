@@ -16,23 +16,23 @@
 
 # Set go mod installation source and proxy
 
-FROM golang:1.20 AS builder
+FROM golang:1.21-alpine as builder
 
 ARG GO111MODULE=on
 
 WORKDIR /openim/openim-server
 
 ENV GO111MODULE=$GO111MODULE
-ENV GOPROXY=$GOPROXY
+ENV GOPROXY=https://goproxy.io,direct 
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN make build BINS=openim-rpc-group
+RUN go mod tidy && go build -o openim-rpc-group ./cmd/openim-rpc/openim-rpc-group/main.go
 
-RUN cp /openim/openim-server/_output/bin/platforms/$(go env GOOS)/$(go env GOARCH)/openim-rpc-group /usr/bin/openim-rpc-group
+RUN cp openim-rpc-group /usr/bin/openim-rpc-group
 
 # FROM ghcr.io/openim-sigs/openim-bash-image:latest
 FROM ghcr.io/openim-sigs/openim-bash-image:latest
