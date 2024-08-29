@@ -51,18 +51,6 @@ jobs:
   publish-docker-images:
     runs-on: ubuntu-latest
     steps:
-      #aws ecr
-      - name: Configure AWS credentials # 配置aws
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: arn:aws:iam::024905375334:role/github-actions
-          role-session-name: github_action_Session
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR # 登录ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
       - name: Checkout # 检出分支
         uses: actions/checkout@v4
         with:
@@ -106,7 +94,33 @@ jobs:
         uses: docker/metadata-action@v5.5.1
         with:
           images: |
-            $ECR_REGISTRY/openim
+            ${{ env.ECR_REGISTRY}}/openim
+
+      #aws ecr login
+      - name: Configure AWS credentials # 配置aws
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::024905375334:role/github-actions
+          role-session-name: github_action_Session
+          aws-region: ${{ env.AWS_REGION }}
+
+      #- name: Login to Amazon ECR # 登录ECR
+      #  id: login-ecr
+      #  uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Login to ECR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ECR_REGISTRY}}
+        
+      # - name: Build, tag, and push docker image to Amazon ECR
+      #  env:
+      #    REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #    REPOSITORY: openim
+      #    IMAGE_TAG: ${{ steps.extract_image_tag.outputs.imagetag }}
+      #  run: |
+      #    docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
+      #    docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
@@ -115,7 +129,8 @@ jobs:
           file: ./main-repo/build/images/${{ env.SERVICE_NAME }}/Dockerfile #dockfile for server
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.extract_image_tag.outputs.imagetag }}
+          # tags: openim:${{ steps.extract_image_tag.outputs.imagetag }}
+          tags: $ECR_REGISTRY/openim:${{ steps.extract_image_tag.outputs.imagetag }}
           labels: ${{ env.SERVICE_NAME }}
         env:
           GOPROXY: https://goproxy.io,direct
